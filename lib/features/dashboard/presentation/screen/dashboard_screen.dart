@@ -1,10 +1,10 @@
+import 'package:camera/camera.dart';
 import 'package:facelivenessdetection/core/constants/string_constants.dart';
 import 'package:facelivenessdetection/core/utils/permissions.dart';
+import 'package:facelivenessdetection/features/face_liveness/presentation/screen/liveness_detection_screen.dart';
 import 'package:facelivenessdetection/features/face_liveness/presentation/screen/liveness_screen.dart';
 import 'package:facelivenessdetection/features/images/presentation/images_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -45,9 +45,15 @@ class DashboardScreen extends StatelessWidget {
                 ElevatedButton(
                   onPressed: () async {
                     if (await requestCameraPermission(context)) {
+                      List<CameraDescription>? cameras;
+                      cameras = await availableCameras();
+                      final front = cameras!.firstWhere((c) => c.lensDirection == CameraLensDirection.front,);
+
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const LivenessScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => LivenessDetectionScreen(camera: front),
+                        ),
                       );
                     }
                   },

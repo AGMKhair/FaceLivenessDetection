@@ -1,26 +1,39 @@
 import 'dart:io';
 
+import 'package:facelivenessdetection/core/utils/image.dart';
 import 'package:facelivenessdetection/features/face_liveness/providers/providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-class ImagesScreen extends ConsumerWidget {
+
+class ImagesScreen extends StatefulWidget {
   const ImagesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final capturedImages = ref.watch(capturedImagesProvider);
+  State<ImagesScreen> createState() => _ImagesScreenState();
+}
 
-    // Sort images by creation time (newest first)
-    final sortedImages = capturedImages.toList()
-      ..sort((a, b) {
-        final aTime = File(a).lastModifiedSync();
-        final bTime = File(b).lastModifiedSync();
-        return bTime.compareTo(aTime); // Newest first
-      });
+class _ImagesScreenState extends State<ImagesScreen> {
+  List<File> capturedImages = [];
 
-    return Scaffold(
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedImages();
+  }
+
+  Future<void> _loadSavedImages() async {
+    final images = await getSavedImages();
+    if (!mounted) return;
+    setState(() {
+      capturedImages = images;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+   return Scaffold(
       appBar: AppBar(
         title: const Text('Captured Images'),
         backgroundColor: Colors.blue.shade900,
@@ -28,7 +41,7 @@ class ImagesScreen extends ConsumerWidget {
       ),
       body: Container(
         color: Colors.grey.shade100,
-        child: sortedImages.isEmpty
+        child: capturedImages.isEmpty
             ? const Center(
           child: Text(
             'No images captured yet.',
@@ -37,10 +50,10 @@ class ImagesScreen extends ConsumerWidget {
         )
             : ListView.builder(
           padding: const EdgeInsets.all(10),
-          itemCount: sortedImages.length,
+          itemCount: capturedImages.length,
           itemBuilder: (context, index) {
-            final imagePath = sortedImages[index];
-            final file = File(imagePath);
+            final imagePath = capturedImages[index];
+            final file = File(imagePath.path);
             final dateTime = file.lastModifiedSync();
             final formattedDate = DateFormat('dd MMM yyyy, hh:mm a').format(dateTime);
 

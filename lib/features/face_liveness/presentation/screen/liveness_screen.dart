@@ -1,13 +1,12 @@
 import 'dart:async';
 import 'dart:io';
-
 import 'package:camera/camera.dart';
 import 'package:facelivenessdetection/features/face_liveness/presentation/widgets/face_painter.dart';
 import 'package:facelivenessdetection/features/face_liveness/providers/providers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
-
 
 class LivenessScreen extends ConsumerStatefulWidget {
   const LivenessScreen({super.key});
@@ -17,64 +16,158 @@ class LivenessScreen extends ConsumerStatefulWidget {
 }
 
 class _LivenessScreenState extends ConsumerState<LivenessScreen> {
-  late StreamSubscription _imageStreamSubscription;
-  bool _hasStarted = false;
+  StreamSubscription? _imageStreamSubscription;
+  StreamController<CameraImage>? _streamController;
+  bool _isStreaming = false;
+  CameraController? controller;
+  DateTime _lastFrameTime = DateTime.now();
+
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!_hasStarted) {
-        _hasStarted = true;
-        final controller = await ref.read(cameraControllerProvider.future);
-        ref.read(livenessProvider.notifier).startDetection();
-        _startImageStream(ref, controller);
+      _initCamera();
+    });
+  }
+
+  Future<void> _initCamera() async {
+    ref.read(livenessProvider.notifier).startDetection();
+
+    final cameras = await availableCameras();
+    final front = cameras!.firstWhere(
+          (c) => c.lensDirection == CameraLensDirection.front,
+    );
+    controller = CameraController(
+      front,
+      ResolutionPreset.medium,
+      enableAudio: false,
+    );
+
+    await controller!.initialize();
+    if (!mounted) return;
+
+    _streamController = StreamController<CameraImage>.broadcast();
+    _startImageStream();
+
+  }
+
+  Future<void> _stopImageStream() async {
+    if (!_isStreaming) return;
+    _isStreaming = false;
+
+    try {
+      await controller?.stopImageStream();
+    } catch (_) {}
+  }
+
+
+  void _startImageStream() {
+    if (_isStreaming) return;
+    _isStreaming = true;
+
+    final detector = ref.watch(faceDetectorProvider);
+
+    controller!.startImageStream((CameraImage image) async {
+      final now = DateTime.now();
+      if (now.difference(_lastFrameTime).inMilliseconds > 10) {
+        _lastFrameTime = now;
+
+        if (!mounted) return;
+          final livenessState = ref.watch(livenessProvider);
+        if (livenessState != LivenessState.detecting) return;
+
+        final inputImage = _inputImageFromCameraImage(image, controller!.description);
+        if (inputImage == null) return;
+
+        try {
+          final faces = await detector.processImage(inputImage);
+          if (!mounted) return;
+          ref.read(livenessProvider.notifier).processFaces(faces);
+        } catch (e) {
+          debugPrint("Error in face detection: $e");
+        }
       }
     });
   }
 
-  void _startImageStream(WidgetRef ref, CameraController controller) {
-    final detector = ref.read(faceDetectorProvider);
-    _imageStreamSubscription = controller.startImageStream((image) async {
-      if (ref.read(livenessProvider) != LivenessState.detecting) return;
-
-      final inputImage = _inputImageFromCameraImage(image, controller.description);
-      if (inputImage == null) return;
-
-      final faces = await detector.processImage(inputImage);
-      ref.read(livenessProvider.notifier).processFaces(faces);
-    }) as StreamSubscription;
-  }
-
-  InputImage? _inputImageFromCameraImage(
-      CameraImage image, CameraDescription camera) {
-    final rotation = InputImageRotationValue.fromRawValue(camera.sensorOrientation);
-    if (rotation == null) return null;
-
-    final format = InputImageFormatValue.fromRawValue(image.format.raw);
-    if (format == null ||
-        (Platform.isAndroid && format != InputImageFormat.nv21) ||
-        (Platform.isIOS && format != InputImageFormat.bgra8888)) return null;
-
-    final plane = image.planes.first;
-    return InputImage.fromBytes(
-      bytes: plane.bytes,
-      metadata: InputImageMetadata(
-        size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: rotation,
-        format: format,
-        bytesPerRow: plane.bytesPerRow,
-      ),
-    );
-  }
 
 
   @override
   void dispose() {
-    _imageStreamSubscription.cancel();
-    ref.read(livenessProvider.notifier).stopDetection();
+    _stopImageStream();
+    _streamController?.close();
+    controller?.dispose();
     super.dispose();
   }
+
+  InputImage? _inputImageFromCameraImage(
+      CameraImage image, CameraDescription camera) {
+    final rotation =
+    InputImageRotationValue.fromRawValue(camera.sensorOrientation);
+    if (rotation == null) return null;
+
+    if (Platform.isIOS) {
+      final format = InputImageFormatValue.fromRawValue(image.format.raw) ??
+          InputImageFormat.bgra8888;
+      return InputImage.fromBytes(
+        bytes: image.planes[0].bytes,
+        metadata: InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: rotation,
+          format: format,
+          bytesPerRow: image.planes[0].bytesPerRow,
+        ),
+      );
+    }
+
+    if (Platform.isAndroid) {
+      final nv21 = _convertYUV420toNV21(image);
+      return InputImage.fromBytes(
+        bytes: nv21,
+        metadata: InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: rotation,
+          format: InputImageFormat.nv21,
+          bytesPerRow: image.planes[0].bytesPerRow,
+        ),
+      );
+    }
+
+    return null;
+  }
+
+  Uint8List _convertYUV420toNV21(CameraImage image) {
+    final int width = image.width;
+    final int height = image.height;
+    final int uvPixelStride = image.planes[1].bytesPerPixel ?? 1;
+
+    final ySize = width * height;
+    final uvSize = width * height ~/ 2;
+    final nv21 = Uint8List(ySize + uvSize);
+
+    // Y plane
+    for (int i = 0; i < height; i++) {
+      nv21.setRange(
+        i * width,
+        i * width + width,
+        image.planes[0].bytes,
+        i * image.planes[0].bytesPerRow,
+      );
+    }
+
+    // U+V plane
+    int uvIndex = ySize;
+    for (int j = 0; j < height ~/ 2; j++) {
+      for (int i = 0; i < width ~/ 2; i++) {
+        nv21[uvIndex++] = image.planes[2].bytes[j * image.planes[2].bytesPerRow + i * uvPixelStride]; // V
+        nv21[uvIndex++] = image.planes[1].bytes[j * image.planes[1].bytesPerRow + i * uvPixelStride]; // U
+      }
+    }
+
+    return nv21;
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -127,21 +220,21 @@ class _LivenessScreenState extends ConsumerState<LivenessScreen> {
                       ),
                     ),
                   ),
-                  if (livenessState == LivenessState.success ||
-                      livenessState == LivenessState.failure)
-                    Center(
-                      child: Text(
-                        livenessState == LivenessState.success
-                            ? 'Liveness Verified!'
-                            : 'Verification Failed',
-                        style: TextStyle(
-                          color: livenessState == LivenessState.success
-                              ? Colors.green
-                              : Colors.red,
-                          fontSize: 24,
-                        ),
-                      ),
-                    ),
+                  // if (livenessState == LivenessState.success ||
+                  //     livenessState == LivenessState.failure)
+                  //   Center(
+                  //     child: Text(
+                  //       livenessState == LivenessState.success
+                  //           ? 'Liveness Verified!'
+                  //           : 'Verification Failed',
+                  //       style: TextStyle(
+                  //         color: livenessState == LivenessState.success
+                  //             ? Colors.green
+                  //             : Colors.red,
+                  //         fontSize: 24,
+                  //       ),
+                  //     ),
+                  //   ),
                 ],
               );
             },
@@ -152,5 +245,4 @@ class _LivenessScreenState extends ConsumerState<LivenessScreen> {
       ),
     );
   }
-
 }

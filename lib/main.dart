@@ -1,4 +1,4 @@
-import 'package:facelivenessdetection/features/dashboard/presentation/screen/dashboardscreen.dart';
+import 'package:facelivenessdetection/features/dashboard/presentation/screen/dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
