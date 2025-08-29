@@ -1,0 +1,100 @@
+import 'dart:io';
+
+import 'package:facelivenessdetection/features/face_liveness/providers/providers.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+
+class ImagesScreen extends ConsumerWidget {
+  const ImagesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final capturedImages = ref.watch(capturedImagesProvider);
+
+    // Sort images by creation time (newest first)
+    final sortedImages = capturedImages.toList()
+      ..sort((a, b) {
+        final aTime = File(a).lastModifiedSync();
+        final bTime = File(b).lastModifiedSync();
+        return bTime.compareTo(aTime); // Newest first
+      });
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Captured Images'),
+        backgroundColor: Colors.blue.shade900,
+        foregroundColor: Colors.white,
+      ),
+      body: Container(
+        color: Colors.grey.shade100,
+        child: sortedImages.isEmpty
+            ? const Center(
+          child: Text(
+            'No images captured yet.',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+        )
+            : ListView.builder(
+          padding: const EdgeInsets.all(10),
+          itemCount: sortedImages.length,
+          itemBuilder: (context, index) {
+            final imagePath = sortedImages[index];
+            final file = File(imagePath);
+            final dateTime = file.lastModifiedSync();
+            final formattedDate = DateFormat('dd MMM yyyy, hh:mm a').format(dateTime);
+
+            return Card(
+              elevation: 3,
+              margin: const EdgeInsets.symmetric(vertical: 5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.all(10),
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    file,
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.broken_image,
+                      size: 60,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+                title: Text(
+                  'Image ${index + 1}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(formattedDate),
+                onTap: () {
+                  // Optional: Navigate to a full-screen image view
+                  showDialog(
+                    context: context,
+                    builder: (_) => Dialog(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.file(file),
+                          const SizedBox(height: 10),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
