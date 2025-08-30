@@ -188,15 +188,15 @@ class _LivenessScreenState extends ConsumerState<LivenessScreen> {
                 fit: StackFit.expand,
                 children: [
                   CameraPreview(controller),
-                  CustomPaint(
-                    painter: FacePainter(
-                      faces: faces,
-                      imageSize: Size(
-                        controller.value.previewSize?.height ?? 0,
-                        controller.value.previewSize?.width ?? 0,
-                      ),
-                    ),
-                  ),
+                  // CustomPaint(
+                  //   painter: FacePainter(
+                  //     faces: faces,
+                  //     imageSize: Size(
+                  //       controller.value.previewSize?.height ?? 0,
+                  //       controller.value.previewSize?.width ?? 0,
+                  //     ),
+                  //   ),
+                  // ),
                   Align(
                     alignment: Alignment.topCenter,
                     child: Padding(

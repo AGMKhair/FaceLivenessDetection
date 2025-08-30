@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:facelivenessdetection/core/utils/image.dart';
 import 'package:facelivenessdetection/features/face_liveness/presentation/model/liveness_movement_enum.dart';
+import 'package:facelivenessdetection/features/face_liveness/presentation/widgets/face_painter.dart';
 import 'package:facelivenessdetection/features/face_liveness/providers/providers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 class LivenessDetectionScreen extends ConsumerStatefulWidget {
   final CameraDescription camera;
+
   const LivenessDetectionScreen({super.key, required this.camera});
 
   @override
@@ -18,6 +20,7 @@ class LivenessDetectionScreen extends ConsumerStatefulWidget {
 class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScreen> {
   late CameraController _controller;
   late FaceDetector _faceDetector;
+  late List<Face> _faces  = [];
   bool _isDetecting = false;
   bool _captured = false;
   bool blinkDetected = false;
@@ -96,7 +99,9 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
         ),
       );
       final faces = await _faceDetector.processImage(inputImage);
-
+      setState(() {
+        _faces = faces;  // এখানে _faces মানে state ভ্যারিয়েবল
+      });
 
       if (faces.isEmpty) {
         ref.read(livenessProvider.notifier).errorMessage = 'No face found.';
@@ -182,27 +187,67 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
       ),
       body: Stack(
         children: [
-          // Camera Preview
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            child: _controller.value.isInitialized
-                ? CameraPreview(_controller)
-                : const Center(child: CircularProgressIndicator()),
+          // Camera preview
+          CameraPreview(_controller),
+
+
+          if(_controller.value.isInitialized)
+          CustomPaint(
+            painter: FacePainter(
+              faces: _faces,
+              imageSize: Size(_controller.value.previewSize!.width, _controller.value.previewSize!.height),
+              rotation: widget.camera.sensorOrientation,
+            ),
+            child: Container(),
           ),
 
-          // Overlay Gradient (optional for style)
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.black.withOpacity(0.3), Colors.transparent],
-                begin: Alignment.bottomCenter,
-                end: Alignment.center,
-              ),
+          Positioned(
+            top: 16,
+            left: 20,
+            right: 20,
+            child: Column(
+              children: [
+                // Progress Bar with Steps
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Progress Bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: LinearProgressIndicator(
+                        value: challengeMovements.isNotEmpty
+                            ? currentIndex / challengeMovements.length
+                            : 0,
+                        minHeight: 16,
+                        backgroundColor: Colors.white,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.greenAccent),
+                      ),
+                    ),
+
+                    // Step Numbers (0 → total)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(
+                        challengeMovements.length + 1,
+                            (index) {
+                          // Active / Inactive color
+                          final isActive = index <= currentIndex;
+                          return Text(
+                            "$index",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isActive ? Colors.redAccent : Colors.black54,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-
-          // Info Box
           Positioned(
             bottom: 40,
             left: 20,
@@ -236,13 +281,13 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    'Captured: $currentIndex/${challengeMovements.length}',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
-                  ),
+                  // Text(
+                  //   'Captured: $currentIndex/${challengeMovements.length}',
+                  //   style: const TextStyle(
+                  //     color: Colors.white70,
+                  //     fontSize: 16,
+                  //   ),
+                  // ),
                 ],
               ),
             ),
