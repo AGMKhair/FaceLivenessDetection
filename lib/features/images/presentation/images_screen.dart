@@ -1,11 +1,7 @@
 import 'dart:io';
-
 import 'package:facelivenessdetection/core/utils/image.dart';
-import 'package:facelivenessdetection/features/face_liveness/providers/providers.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-
 
 class ImagesScreen extends StatefulWidget {
   const ImagesScreen({super.key});
@@ -33,11 +29,16 @@ class _ImagesScreenState extends State<ImagesScreen> {
 
   @override
   Widget build(BuildContext context) {
-   return Scaffold(
+    return Scaffold(
       appBar: AppBar(
-        title: const Text('Captured Images'),
-        backgroundColor: Colors.blue.shade900,
+        title: const Text(
+          'Captured Images',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor:  Colors.blue.shade900,
         foregroundColor: Colors.white,
+        elevation: 3,
       ),
       body: Container(
         color: Colors.grey.shade100,
@@ -48,61 +49,99 @@ class _ImagesScreenState extends State<ImagesScreen> {
             style: TextStyle(fontSize: 18, color: Colors.grey),
           ),
         )
-            : ListView.builder(
-          padding: const EdgeInsets.all(10),
+            : GridView.builder(
+          padding: const EdgeInsets.all(12),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2, // 2 images per row
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.8,
+          ),
           itemCount: capturedImages.length,
           itemBuilder: (context, index) {
-            final imagePath = capturedImages[index];
-            final file = File(imagePath.path);
+            final file = capturedImages[index];
             final dateTime = file.lastModifiedSync();
-            final formattedDate = DateFormat('dd MMM yyyy, hh:mm a').format(dateTime);
+            final formattedDate =
+            DateFormat('dd MMM yyyy, hh:mm a').format(dateTime);
 
-            return Card(
-              elevation: 3,
-              margin: const EdgeInsets.symmetric(vertical: 5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.all(10),
-                leading: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.file(
-                    file,
-                    width: 60,
-                    height: 60,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.broken_image,
-                      size: 60,
-                      color: Colors.grey,
+            return GestureDetector(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => Dialog(
+                    backgroundColor: Colors.black,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.file(file),
+                        const SizedBox(height: 10),
+                        Text(
+                          formattedDate,
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 14),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text(
+                            'Close',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                );
+              },
+              child: Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
                 ),
-                title: Text(
-                  'Image ${index + 1}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(formattedDate),
-                onTap: () {
-                  // Optional: Navigate to a full-screen image view
-                  showDialog(
-                    context: context,
-                    builder: (_) => Dialog(
+                elevation: 4,
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(15)),
+                        child: Image.file(
+                          file,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.broken_image,
+                            size: 80,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8),
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Image.file(file),
-                          const SizedBox(height: 10),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Close'),
+                          Text(
+                            "Image ${index + 1}",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            formattedDate,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade600,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
             );
           },

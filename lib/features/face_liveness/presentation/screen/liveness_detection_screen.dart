@@ -164,44 +164,92 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-      body:
-      Stack(
+      appBar: AppBar(
+        title: const Text(
+          'Liveness Detection',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            fontSize: 22,
+            letterSpacing: 1,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor:  Colors.blue.shade900,
+        foregroundColor: Colors.white,
+        elevation: 4,
+      ),
+      body: Stack(
         children: [
+          // Camera Preview
           Container(
+            width: double.infinity,
+            height: double.infinity,
             child: _controller.value.isInitialized
                 ? CameraPreview(_controller)
                 : const Center(child: CircularProgressIndicator()),
           ),
+
+          // Overlay Gradient (optional for style)
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.black.withOpacity(0.3), Colors.transparent],
+                begin: Alignment.bottomCenter,
+                end: Alignment.center,
+              ),
+            ),
+          ),
+
+          // Info Box
           Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-         child:  Align(
-            alignment: Alignment.topCenter,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
+            bottom: 40,
+            left: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (error.isNotEmpty)
-                    Text(error,
-                        style: const TextStyle(
-                            color: Colors.green, fontSize: 18)),
-                     Text(currentMsg,
-                        style: TextStyle(
-                            color: Colors.white, fontSize: 18)),
-                    Text('Captured: $currentIndex',
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 16)),
-
+                    Text(
+                      error,
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  const SizedBox(height: 6),
+                  Text(
+                    currentMsg,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Captured: $currentIndex/${challengeMovements.length}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),),
+          ),
         ],
-      )
+      ),
     );
   }
+
 }
