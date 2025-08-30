@@ -31,7 +31,7 @@ class FacePainter extends CustomPainter {
         final landmark = face.landmarks[landmarkType];
         if (landmark != null) {
           canvas.drawCircle(
-            Offset(landmark.position.x as double, landmark.position.y as double),
+            Offset(landmark.position.x.toDouble(), landmark.position.y.toDouble()),
             3,
             Paint()..color = Colors.redAccent,
           );

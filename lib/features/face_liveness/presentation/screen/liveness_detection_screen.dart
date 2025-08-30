@@ -26,7 +26,6 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
   bool blinkDetected = false;
   bool leftTurnDetected = false;
   bool rightTurnDetected = false;
-  DateTime _lastFrameTime = DateTime.now();
 
   final allMovements = LivenessMovementEnum.values.toList();
   List<LivenessMovementEnum> challengeMovements = [];
@@ -60,9 +59,19 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
   @override
   void initState() {
     super.initState();
-    _controller = CameraController(widget.camera, ResolutionPreset.medium, enableAudio: false);
+    _controller = CameraController(widget.camera, ResolutionPreset.high, enableAudio: false);
+
+    // _controller = CameraController(widget.camera, ResolutionPreset.medium, enableAudio: false);
+    // _faceDetector = FaceDetector(
+    //   options: FaceDetectorOptions(enableClassification: true),
+    // );
     _faceDetector = FaceDetector(
-      options: FaceDetectorOptions(enableClassification: true),
+      options: FaceDetectorOptions(
+        enableClassification: true,
+        enableContours: true,
+        enableLandmarks: true,
+        performanceMode: FaceDetectorMode.accurate, // or fast
+      ),
     );
 
     _initializeCamera();
@@ -74,10 +83,9 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
     await _controller.initialize();
     await _controller.startImageStream(_processCameraImage);
     ref.read(livenessProvider.notifier).startDetection();
-    allMovements.shuffle(); // Random order
+    allMovements.shuffle();
     challengeMovements = allMovements.take(7).toList();
     setState(() => currentMsg = "Correct movement: ${challengeMovements[0].name}");
-    setState(() {});
   }
 
   void _processCameraImage(CameraImage image) async {
@@ -89,6 +97,7 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
 
       final nv21bytes = convertYUV420ToNV21(image);
 
+
       final inputImage = InputImage.fromBytes(
         bytes: nv21bytes,
         metadata: InputImageMetadata(
@@ -98,9 +107,19 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
           bytesPerRow: image.width,
         ),
       );
+
+      // final inputImage = InputImage.fromBytes(
+      //   bytes: nv21bytes,
+      //   metadata: InputImageMetadata(
+      //     size: Size(image.width.toDouble(), image.height.toDouble()),
+      //     rotation: InputImageRotationValue.fromRawValue(widget.camera.sensorOrientation) ?? InputImageRotation.rotation0deg,
+      //     format: InputImageFormat.nv21,
+      //     bytesPerRow: image.width,
+      //   ),
+      // );
       final faces = await _faceDetector.processImage(inputImage);
       setState(() {
-        _faces = faces;  // এখানে _faces মানে state ভ্যারিয়েবল
+        _faces = faces;
       });
 
       if (faces.isEmpty) {
@@ -207,7 +226,6 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
             right: 20,
             child: Column(
               children: [
-                // Progress Bar with Steps
                 Stack(
                   alignment: Alignment.center,
                   children: [
@@ -224,7 +242,6 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
                       ),
                     ),
 
-                    // Step Numbers (0 → total)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: List.generate(
@@ -281,13 +298,6 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 4),
-                  // Text(
-                  //   'Captured: $currentIndex/${challengeMovements.length}',
-                  //   style: const TextStyle(
-                  //     color: Colors.white70,
-                  //     fontSize: 16,
-                  //   ),
-                  // ),
                 ],
               ),
             ),
