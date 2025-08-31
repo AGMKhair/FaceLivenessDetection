@@ -1,9 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:facelivenessdetection/core/utils/image.dart';
 import 'package:facelivenessdetection/features/face_liveness/presentation/model/liveness_movement_enum.dart';
-import 'package:facelivenessdetection/features/face_liveness/presentation/widgets/face_painter.dart';
 import 'package:facelivenessdetection/features/face_liveness/providers/providers.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
@@ -22,7 +20,7 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
   late FaceDetector _faceDetector;
   late List<Face> _faces  = [];
   bool _isDetecting = false;
-  bool _captured = false;
+  final bool _captured = false;
   bool blinkDetected = false;
   bool leftTurnDetected = false;
   bool rightTurnDetected = false;
@@ -45,7 +43,6 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
       if (currentIndex >= challengeMovements.length) {
         debugPrint("All movements completed!");
         setState(() => currentMsg = "All movements completed!");
-        // Liveness verified
       } else {
         debugPrint("Next movement: ${challengeMovements[currentIndex]}");
         setState(() => currentMsg = "Next movement: ${challengeMovements[currentIndex].name}");
@@ -61,10 +58,6 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
     super.initState();
     _controller = CameraController(widget.camera, ResolutionPreset.high, enableAudio: false);
 
-    // _controller = CameraController(widget.camera, ResolutionPreset.medium, enableAudio: false);
-    // _faceDetector = FaceDetector(
-    //   options: FaceDetectorOptions(enableClassification: true),
-    // );
     _faceDetector = FaceDetector(
       options: FaceDetectorOptions(
         enableClassification: true,
@@ -108,15 +101,6 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
         ),
       );
 
-      // final inputImage = InputImage.fromBytes(
-      //   bytes: nv21bytes,
-      //   metadata: InputImageMetadata(
-      //     size: Size(image.width.toDouble(), image.height.toDouble()),
-      //     rotation: InputImageRotationValue.fromRawValue(widget.camera.sensorOrientation) ?? InputImageRotation.rotation0deg,
-      //     format: InputImageFormat.nv21,
-      //     bytesPerRow: image.width,
-      //   ),
-      // );
       final faces = await _faceDetector.processImage(inputImage);
       setState(() {
         _faces = faces;
@@ -134,7 +118,7 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
       else if (faces.isNotEmpty) {
         final face = faces.first;
         setState(() => error = "Face Processing.");
-        // Example: blink detection
+        // blink detection
         if ((face.leftEyeOpenProbability ?? 1.0) < 0.3 &&
             (face.rightEyeOpenProbability ?? 1.0) < 0.3) {
           onMovementDetected(LivenessMovementEnum.blink);
@@ -155,7 +139,6 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
           final mouthOpenProb = face.smilingProbability ?? 0.0;
           if (mouthOpenProb > 0.7) onMovementDetected(LivenessMovementEnum.mouthOpen);
           else if (mouthOpenProb < 0.3) onMovementDetected(LivenessMovementEnum.mouthClose);
-
         }
 
       }
@@ -166,9 +149,6 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
       _isDetecting = false;
     }
   }
-
-
-
 
   Future<void> _capturePhoto() async {
     try {
@@ -185,126 +165,87 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
     _faceDetector.close();
     super.dispose();
   }
-
   @override
   Widget build(BuildContext context) {
+    final progress = challengeMovements.isNotEmpty
+        ? (currentIndex / challengeMovements.length).clamp(0.0, 1.0)
+        : 0.0;
+
+    final percent = challengeMovements.isNotEmpty
+        ? ((currentIndex / challengeMovements.length) * 100).round()
+        : 0;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Liveness Detection',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            fontSize: 22,
-            letterSpacing: 1,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor:  Colors.blue.shade900,
-        foregroundColor: Colors.white,
-        elevation: 4,
-      ),
-      body: Stack(
-        children: [
-          // Camera preview
-          CameraPreview(_controller),
-
-
-          if(_controller.value.isInitialized)
-          CustomPaint(
-            painter: FacePainter(
-              faces: _faces,
-              imageSize: Size(_controller.value.previewSize!.width, _controller.value.previewSize!.height),
-              rotation: widget.camera.sensorOrientation,
-            ),
-            child: Container(),
-          ),
-
-          Positioned(
-            top: 16,
-            left: 20,
-            right: 20,
-            child: Column(
-              children: [
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Progress Bar
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: LinearProgressIndicator(
-                        value: challengeMovements.isNotEmpty
-                            ? currentIndex / challengeMovements.length
-                            : 0,
-                        minHeight: 16,
-                        backgroundColor: Colors.white,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.greenAccent),
-                      ),
-                    ),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: List.generate(
-                        challengeMovements.length + 1,
-                            (index) {
-                          // Active / Inactive color
-                          final isActive = index <= currentIndex;
-                          return Text(
-                            "$index",
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isActive ? Colors.redAccent : Colors.black54,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            bottom: 40,
-            left: 20,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 30),
+            Container(
+              alignment: Alignment.center,
+              margin: EdgeInsets.symmetric(horizontal:  20),
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  if (error.isNotEmpty)
-                    Text(
-                      error,
-                      style: const TextStyle(
-                        color: Colors.redAccent,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                  SizedBox(
+                    width: 280,
+                    height: 280,
+                    child: CircularProgressIndicator(
+                      value: progress,
+                      strokeWidth: 8,
+                      backgroundColor: Colors.grey.shade800,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                    ),
+                  ),
+                  ClipOval(
+                    child: SizedBox(
+                      width: 240,
+                      height: 240,
+                      child: _controller.value.isInitialized
+                          ? CameraPreview(_controller)
+                          : const Center(
+                        child: CircularProgressIndicator(),
                       ),
                     ),
-                  const SizedBox(height: 6),
-                  Text(
-                    currentMsg,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 4),
                 ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+            Text(
+              "$percent%",
+              style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (error.isNotEmpty)
+              Text(
+                error,
+                style: const TextStyle(
+                  color: Colors.green,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            const SizedBox(height: 8),
+            Text(
+              currentMsg,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
+
 
 }
