@@ -9,6 +9,10 @@ class StringConstants {
   static const String CAMERA_PERMISSION_REQUIRED = 'Camera Permission Required';
   static const String CAMERA_PERMISSION_REQUIRED_MESSAGE = 'This app needs camera access for liveness detection.';
   static const String CANCEL = 'Cancel';
+  static const String FACE_SETUP = 'Face Setup';
+  static const String FACE_PROCESSSING = 'Face Processing.';
+  static const String FACE_REGISTRATION_COMPLETE = 'Face registration complete!';
+  static const String FACE_NOT_FOUND = 'Face Not Found';
   static const String FAILED = 'Failed';
   static const String ERROR = 'Error';
   static const String LOADING = 'Loading';

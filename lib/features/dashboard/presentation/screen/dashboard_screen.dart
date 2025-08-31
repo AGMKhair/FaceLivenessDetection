@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:facelivenessdetection/core/constants/string_constants.dart';
 import 'package:facelivenessdetection/core/utils/permissions.dart';
+import 'package:facelivenessdetection/features/face_liveness/presentation/screen/face_setup_screen.dart';
 import 'package:facelivenessdetection/features/face_liveness/presentation/screen/liveness_detection_screen.dart';
 import 'package:facelivenessdetection/features/face_liveness/presentation/screen/liveness_screen.dart';
 import 'package:facelivenessdetection/features/images/presentation/images_screen.dart';
@@ -42,6 +43,37 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 40),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (await requestCameraPermission(context)) {
+                      List<CameraDescription>? cameras;
+                      cameras = await availableCameras();
+                      final front = cameras!.firstWhere((c) => c.lensDirection == CameraLensDirection.front,);
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FaceSetupScreen(camera: front),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.blue.shade900,
+                    backgroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 5,
+                  ),
+                  child: const Text(
+                   StringConstants.FACE_SETUP,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () async {
                     if (await requestCameraPermission(context)) {

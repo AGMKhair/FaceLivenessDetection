@@ -63,7 +63,7 @@ class _LivenessDetectionScreenState extends ConsumerState<LivenessDetectionScree
         enableClassification: true,
         enableContours: true,
         enableLandmarks: true,
-        performanceMode: FaceDetectorMode.accurate, // or fast
+        performanceMode: FaceDetectorMode.accurate,
       ),
     );
 
